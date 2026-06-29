@@ -1,185 +1,331 @@
-# 🏥 Whisper Summer School
+# 🏥 Whisper Summer School — Medical Transcription Pipeline
 
-A medical audio transcription and SOAP note generation project built for educational purposes.  
-Uses **OpenAI Whisper** for speech-to-text and **BioMistral** for clinical documentation.
+Pipeline AI untuk **transkripsi audio medis otomatis** dan pembuatan **catatan SOAP** menggunakan OpenAI Whisper + LLM medis lokal.
 
-> ⚠️ **For educational use only.** All generated SOAP notes require clinician review before any clinical use.
+> ⚠️ **Disclaimer:** Output AI bersifat *advisory* dan wajib ditinjau oleh tenaga medis profesional sebelum digunakan secara klinis.
 
 ---
 
-## 📁 Project Structure
+## ✨ Fitur Utama
+
+- 🎙️ **Transkripsi otomatis** percakapan dokter-pasien via OpenAI Whisper
+- 📋 **Generasi SOAP note** terstruktur (Subjective / Objective / Assessment / Plan)
+- 🔒 **PII De-identification** — nama & data sensitif otomatis di-mask (via OpenMed)
+- 🍎 **Apple Silicon optimized** — auto-detect MPS/MLX
+- ⚡ **Multi-backend LLM** — OpenMed, Ollama, atau HuggingFace
+- 🖥️ **Gradio UI** — antarmuka web dengan mikrofon, SOAP viewer & download
+
+---
+
+## 🗂️ Struktur Project
 
 ```
 whisper-summer-school/
-├── app.py                  # Gradio UI: Whisper STT only (simple demo)
-├── app_emr_demo.py         # Gradio UI: Whisper + rule-based SOAP (no LLM)
-├── main.py                 # CLI: Full pipeline (Whisper + BioMistral via Ollama)
-├── transcribe.py           # Module: Audio transcription with Whisper
-├── soap_generator.py       # Module: SOAP generation via BioMistral (Ollama)
-├── soap_from_transcript.py # Module: SOAP generation via BioMistral (HuggingFace)
-├── requirements.txt        # Python dependencies
-├── audio/                  # 🔒 Audio input files (gitignored)
-└── outputs/                # 🔒 Transcripts & SOAP notes (gitignored)
+├── main.py                  # Pipeline utama (CLI)
+├── config.py                # Konfigurasi terpusat (device, model, backend)
+├── transcribe.py            # Modul transkripsi Whisper
+├── soap_generator.py        # SOAP via Ollama (medllama2, mistral, dll)
+├── soap_openmed.py          # SOAP via OpenMed (NER + PII de-id)
+├── app.py                   # Gradio UI — transkripsi sederhana
+├── app_emr_demo.py          # Gradio UI — demo EMR lengkap
+├── requirements.txt         # Dependensi Python
+├── legacy/
+│   └── soap_from_transcript.py  # HuggingFace backend (arsip)
+├── audio/                   # File audio input (tidak di-commit)
+└── outputs/                 # Hasil transkrip & SOAP (tidak di-commit)
 ```
 
 ---
 
-## 🧩 How Each File Works
+## ⚙️ Instalasi
 
-### `app.py` — Simple STT Demo
-- Gradio web interface
-- Upload or record audio → get transcript
-- Uses Whisper `base` model
-- **Run:** `python app.py`
+### 1. Clone & buat virtual environment
 
-### `app_emr_demo.py` — EMR Demo (No LLM Required)
-- Gradio web interface
-- Upload audio → transcript + rule-based SOAP draft
-- Does **not** require Ollama or GPU
-- Best for quick demos without LLM setup
-- **Run:** `python app_emr_demo.py`
-
-### `main.py` — Full CLI Pipeline
-- Command-line interface
-- Full pipeline: Audio → Whisper → BioMistral → SOAP note saved to `outputs/`
-- Requires Ollama running locally
-- **Run:** `python main.py audio/sample.mp3`
-
-### `transcribe.py` — Whisper Module
-- Reusable transcription module
-- Imported by `main.py`
-- Can also run standalone
-- **Run:** `python transcribe.py audio/sample.mp3`
-
-### `soap_generator.py` — SOAP via Ollama
-- Uses BioMistral locally via Ollama
-- Returns structured JSON SOAP note
-- Saves `.json` and `.txt` to `outputs/`
-- Requires: `ollama pull biomistral`
-- **Run:** `python soap_generator.py`
-
-### `soap_from_transcript.py` — SOAP via HuggingFace
-- Uses BioMistral directly via `transformers`
-- Alternative to Ollama approach
-- Downloads model from HuggingFace (~14GB)
-- **Run:** `python soap_from_transcript.py`
-
----
-
-## ⚙️ Installation
-
-### 1. Clone the repository
 ```bash
-git clone git@github.com:oskarriandi/whisper-summer-school.git
+git clone https://github.com/<username>/whisper-summer-school.git
 cd whisper-summer-school
-```
 
-### 2. Create virtual environment
-```bash
 python3 -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate        # macOS / Linux
+# .venv\Scripts\activate         # Windows
 ```
 
-### 3. Install dependencies
+### 2. Install dependensi
+
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4. Install Ollama (for full LLM pipeline)
-```bash
-# macOS
-brew install ollama
+### 3. Install backend LLM (pilih salah satu)
 
-# Pull BioMistral model (~4.5GB)
-ollama pull biomistral
+#### 🥇 OpenMed — Recommended (Apple Silicon / CPU / NVIDIA)
+
+```bash
+# Apple Silicon (M1/M2/M3/M4)
+pip install "openmed[mlx]"
+
+# CPU atau NVIDIA
+pip install openmed
 ```
 
-### 5. Install FFmpeg (required by Whisper)
+#### 🦙 Ollama — Lokal, mudah digunakan
+
 ```bash
-brew install ffmpeg
-```
+# Install Ollama: https://ollama.com
+ollama pull medllama2       # Model medis (3.8 GB)
+ollama pull mistral         # General purpose (4 GB)
+ollama pull llama3.2        # Ringan & cepat (2 GB)
 
----
-
-## 🚀 Usage
-
-### Option A — Simple Demo (No LLM)
-```bash
-python app.py
-# Open http://localhost:7860
-```
-
-### Option B — EMR Demo with SOAP (No LLM)
-```bash
-python app_emr_demo.py
-# Open http://localhost:7860
-```
-
-### Option C — Full Pipeline via CLI (With LLM)
-```bash
-# Start Ollama first
+# Jalankan server Ollama (terminal terpisah)
 ollama serve
-
-# Run pipeline
-python main.py audio/your_audio.mp3
-
-# With options
-python main.py audio/your_audio.mp3 --whisper-model small --llm-model biomistral
 ```
 
-### Option D — Run modules individually
+---
+
+## 🚀 Cara Penggunaan
+
+### CLI — Pipeline Lengkap
+
 ```bash
-# Transcription only
-python transcribe.py audio/your_audio.mp3
+# Default (OpenMed backend)
+python main.py audio/sample.mp3
 
-# SOAP generation only (from text)
-python soap_generator.py
+# Pakai Ollama + medllama2
+python main.py audio/sample.mp3 --backend ollama --model medllama2
 
-# SOAP via HuggingFace (downloads model automatically)
-python soap_from_transcript.py
+# Pakai Ollama + model lain
+python main.py audio/sample.mp3 --backend ollama --model mistral
+
+# Hanya transkripsi, skip SOAP
+python main.py audio/sample.mp3 --no-soap
+
+# Override model Whisper & bahasa
+python main.py audio/sample.mp3 --whisper-model small --lang en
+```
+
+### Semua Flag CLI
+
+| Flag | Shorthand | Default | Keterangan |
+|------|-----------|---------|------------|
+| `--backend` | `-b` | `openmed` | Backend LLM: `openmed` / `ollama` / `hf` |
+| `--model` | `-m` | `medllama2` | Nama model Ollama (hanya untuk `--backend ollama`) |
+| `--whisper-model` | `-w` | `base` | Ukuran model Whisper |
+| `--lang` | `-l` | `id` | Bahasa: `id`, `en`, `auto` |
+| `--no-soap` | — | `False` | Skip generasi SOAP |
+
+### Gradio UI
+
+```bash
+# UI transkripsi sederhana
+python app.py
+
+# UI demo EMR lengkap (Whisper + SOAP + Download)
+python app_emr_demo.py
+```
+
+> 🎙️ **Mikrofon:** Selalu buka via **`http://localhost:PORT`** — bukan `http://0.0.0.0:PORT`
+> Browser hanya mengizinkan akses mikrofon di [secure context](https://developer.mozilla.org/en-US/docs/Web/Security/Secure_Contexts),
+> dan `localhost` dianggap secure meskipun tanpa HTTPS.
+
+#### Fitur Web UI (`app_emr_demo.py`)
+
+| Fitur | Keterangan |
+|-------|-----------|
+| 🎙️ Upload / Rekam | Upload file audio atau rekam langsung via mikrofon |
+| 🤖 Pilih Backend | `openmed` / `ollama` / `hf` |
+| 🦙 Pilih Model Ollama | Dropdown dinamis dari `ollama list` |
+| 🎙️ Pilih Whisper Model | `tiny` → `large-v3-turbo` |
+| 🌐 Pilih Bahasa | `id` / `en` / `auto` |
+| 🔒 De-identifikasi PII | Mask nama & data sensitif sebelum diproses |
+| 📝 Transkrip Viewer | Tampil langsung di tab Transkrip |
+| 📋 SOAP Viewer | Tampil langsung di tab SOAP Note |
+| 🗂️ JSON Viewer | Tampil langsung di tab JSON |
+| ⬇️ Download | `transcript.txt` · `soap.txt` · `soap.json` |
+
+---
+
+## 🤖 Perbandingan Backend LLM
+
+| Backend | Keunggulan | Kelemahan | Kebutuhan |
+|---------|-----------|-----------|-----------|
+| **OpenMed** | PII de-id, 1000+ model medis, MLX native | Perlu install extra | `pip install "openmed[mlx]"` |
+| **Ollama** | Mudah, model bisa diganti, stabil | Perlu `ollama serve` | `ollama pull medllama2` |
+| **HuggingFace** | Tanpa server tambahan | Butuh VRAM besar (14GB+) | GPU recommended |
+
+---
+
+## 🎙️ Model Whisper
+
+| Model | VRAM | Kecepatan | Akurasi | Rekomendasi |
+|-------|------|-----------|---------|-------------|
+| `tiny` | ~1 GB | ⚡⚡⚡⚡ | ⭐⭐ | Testing cepat |
+| `base` | ~1 GB | ⚡⚡⚡ | ⭐⭐⭐ | **Default** |
+| `small` | ~2 GB | ⚡⚡ | ⭐⭐⭐⭐ | Recommended |
+| `medium` | ~5 GB | ⚡ | ⭐⭐⭐⭐⭐ | Akurasi tinggi |
+| `large-v3-turbo` | ~6 GB | ⚡⚡ | ⭐⭐⭐⭐⭐ | Best quality |
+
+```bash
+# Ganti model Whisper di config.py atau via flag:
+python main.py audio/sample.mp3 --whisper-model small
 ```
 
 ---
 
-## 🤖 Models Used
+## 📋 Format Output SOAP
 
-| Component | Model | Size | Backend |
-|-----------|-------|------|---------|
-| Speech-to-Text | OpenAI Whisper `base` | ~150MB | Local |
-| SOAP Generation | BioMistral-7B Q4 | ~4.5GB | Ollama |
-| SOAP (alternative) | BioMistral-7B fp16 | ~14GB | HuggingFace |
+```
+=======================================================
+         CATATAN MEDIS — FORMAT SOAP
+  Dibuat : 2026-06-30T01:25:00
+  Model  : medllama2:latest
+=======================================================
 
-### Whisper Model Options
-| Model | Size | Speed | Accuracy |
-|-------|------|-------|----------|
-| `tiny` | 75MB | ⚡⚡⚡⚡ | ⭐⭐ |
-| `base` | 150MB | ⚡⚡⚡ | ⭐⭐⭐ |
-| `small` | 500MB | ⚡⚡ | ⭐⭐⭐⭐ |
-| `medium` | 1.5GB | ⚡ | ⭐⭐⭐⭐⭐ |
+[S — Subjective (Keluhan Pasien)]
+• Dizziness selama beberapa bulan
+• Hearing loss dan tinnitus (ringing in ears)
+
+[O — Objective (Temuan Klinis)]
+• Pasien tampak comfortable
+• Blood pressure 120/80, HR 72
+
+[A — Assessment (Penilaian)]
+• Consistent with Meniere's disease
+
+[P — Plan (Rencana Tindakan)]
+• Prescribe betahistine 16mg twice daily
+• Referral to audiology
+• Follow-up in 4 weeks
+
+=======================================================
+  ⚠️  DISCLAIMER: Output ini bersifat advisory.
+  Tidak untuk digunakan sebagai keputusan klinis.
+=======================================================
+```
+
+Output disimpan otomatis ke folder `outputs/`:
+- `transcript_<nama>_<timestamp>.txt`
+- `soap_<nama>_<timestamp>.txt`
+- `soap_<nama>_<timestamp>.json`
 
 ---
 
-## 📋 Requirements
+## 🛠️ Konfigurasi (`config.py`)
 
-- Python 3.11+
-- macOS / Linux
-- FFmpeg
-- Ollama (optional, for full LLM pipeline)
-- GPU recommended for `soap_from_transcript.py`
+Semua pengaturan default ada di `config.py`:
+
+```python
+# Backend LLM default
+BACKEND = "openmed"          # "openmed" | "ollama" | "hf"
+
+# Whisper
+whisper_cfg.model_size = "base"
+whisper_cfg.language   = "id"   # "id" | "en" | "auto"
+
+# Ollama
+ollama_cfg.model       = "medllama2"
+ollama_cfg.temperature = 0.3
+
+# OpenMed
+openmed_cfg.deidentify_before_soap = True
+openmed_cfg.deidentify_method      = "mask"
+```
 
 ---
 
-## 🔒 Privacy & Security
+## 🔒 Privasi & Keamanan
 
-- `audio/` and `outputs/` are **gitignored** — never committed to GitHub
-- All processing runs **100% locally** — no data sent to external servers
-- Generated SOAP notes are drafts only — **always require clinician review**
+- ✅ **100% lokal** — tidak ada data yang dikirim ke server eksternal
+- ✅ **PII De-identification** — nama pasien & data sensitif otomatis di-mask
+- ✅ **HIPAA-aware** — OpenMed mendukung 247 checkpoint de-identifikasi
+- ❌ **Jangan commit** data pasien ke repository publik (sudah ada di `.gitignore`)
 
 ---
 
-## 📚 References
+## 🐛 Troubleshooting
 
-- [OpenAI Whisper](https://github.com/openai/whisper)
-- [BioMistral on HuggingFace](https://huggingface.co/BioMistral/BioMistral-7B)
-- [Ollama](https://ollama.com)
-- [Gradio](https://gradio.app)
+### Whisper: `FP16 is not supported on CPU`
+```
+# Sudah di-suppress otomatis. Tidak perlu tindakan.
+```
+
+### Mikrofon tidak aktif di browser
+```
+# Pastikan buka via http://localhost:PORT
+# BUKAN http://0.0.0.0:PORT — browser blokir mic di non-secure context
+```
+
+### Ollama: `model not found`
+```bash
+ollama list                    # cek model yang tersedia
+ollama pull medllama2          # download model
+ollama serve                   # pastikan server berjalan
+```
+
+### NumPy / Numba conflict
+```bash
+pip install "numpy==1.26.4"
+```
+
+### OpenMed tidak terinstall
+```bash
+pip install "openmed[mlx]"     # Apple Silicon
+pip install openmed            # CPU / NVIDIA
+```
+
+### MPS out of memory (Apple Silicon)
+```bash
+# Gunakan model Whisper yang lebih kecil
+python main.py audio/sample.mp3 --whisper-model tiny
+```
+
+---
+
+## 📦 Requirements
+
+```
+openai-whisper
+torch
+ollama
+gradio>=6.0
+numpy==1.26.4
+openmed[mlx]    # opsional, Apple Silicon
+openmed         # opsional, CPU/NVIDIA
+```
+
+Install semua:
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+## 🗺️ Roadmap
+
+- [x] Transkripsi Whisper multi-device (CPU / MPS / CUDA)
+- [x] SOAP generation via Ollama (medllama2, mistral, dll)
+- [x] SOAP generation via OpenMed (NER + PII de-id)
+- [x] Auto-detect Apple Silicon / NVIDIA / CPU
+- [x] Multi-layer response parser (JSON → header → regex → fallback)
+- [x] Gradio UI — transkripsi sederhana (`app.py`)
+- [x] Gradio UI — EMR demo lengkap (`app_emr_demo.py`)
+- [x] SOAP viewer & download (txt + json) di Web UI
+- [x] Mikrofon aktif di localhost (secure context fix)
+- [ ] Install & test `openmed[mlx]` end-to-end
+- [ ] Whisper `large-v3-turbo` benchmark di Apple Silicon
+- [ ] Output PDF dari SOAP note
+- [ ] Batch processing multiple audio files
+
+---
+
+## 👥 Kontribusi
+
+Pull request dan issue sangat disambut! Pastikan:
+1. Tidak menyertakan data pasien nyata
+2. Test pipeline sebelum PR: `python main.py audio/sample.mp3 --no-soap`
+3. Update README jika menambah fitur baru
+
+---
+
+## 📄 Lisensi
+
+MIT License — bebas digunakan untuk keperluan edukasi dan riset.
