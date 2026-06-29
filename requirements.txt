@@ -1,11 +1,17 @@
-openai-whisper
-torch
+#openai-whisper
+#torch
 torchaudio
 gradio
 transformers
 accelerate
 sentencepiece
 pandas
-numpy
+#numpy
 soundfile
+openai-whisper>=20231117
+torch>=2.0.0
+numpy==1.26.4
+ffmpeg-python
+ollama>=0.1.7
+python-dotenv
 
